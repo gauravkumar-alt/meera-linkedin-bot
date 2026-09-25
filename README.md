@@ -38,6 +38,15 @@ without news.
 The feed only carries headline, publication, date and link, not article text, so
 the drafter is told not to state anything beyond the headline.
 
+## Claim check
+
+After drafting, Gemini lists every factual sentence the post makes about Meera or
+Skinstinct and marks where it came from: her note, her known facts (section 2 of
+`skill/meera-voice.md`), or neither. Facts with no source are listed under "CHECK
+THESE CLAIMS" at the end of the reply; opinions and general statements are not. If
+the check fails to run, the reply says so rather than looking clean. It catches most
+invented details, not all, so she should still read every sentence about herself.
+
 ## Environment variables
 
 Set these in Vercel (Project → Settings → Environment Variables), and in `.env` for

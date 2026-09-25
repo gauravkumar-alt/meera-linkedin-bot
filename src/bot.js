@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TelegramClient } from "./telegram.js";
-import { PostDrafter, NoteScorer, KeywordExtractor } from "./gemini.js";
+import { PostDrafter, NoteScorer, KeywordExtractor, ClaimChecker } from "./gemini.js";
 import { searchNews } from "./news.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -22,9 +22,31 @@ export function createBot(env = process.env) {
   }
 
   const telegram = new TelegramClient(TELEGRAM_BOT_TOKEN);
-  const drafter = new PostDrafter(GEMINI_API_KEY, GEMINI_MODEL, readFileSync(SKILL_FILE, "utf8"));
+  const skill = readFileSync(SKILL_FILE, "utf8");
+  const knownFacts = skill.slice(skill.indexOf("## 2."), skill.indexOf("## 3."));
+  const drafter = new PostDrafter(GEMINI_API_KEY, GEMINI_MODEL, skill);
   const scorer = new NoteScorer(GEMINI_API_KEY, GEMINI_MODEL, readFileSync(RUBRIC_FILE, "utf8"));
   const extractor = new KeywordExtractor(GEMINI_API_KEY, GEMINI_MODEL);
+  const checker = new ClaimChecker(GEMINI_API_KEY, GEMINI_MODEL, knownFacts);
+
+  async function claimsBlock(note, draft) {
+    const post = draft.split(/\n-{3,}\s*\n/)[0];
+    try {
+      const flagged = await checker.unsupported(note, post);
+      console.log(`Claim check: ${flagged.length} unsupported`);
+      if (!flagged.length) return "Claim check: every statement about you or Skinstinct comes from your note or your known facts.";
+      return [
+        "______________________________",
+        "CHECK THESE CLAIMS - not in your note or your known facts:",
+        ...flagged.map((c) => `• ${c}`),
+        "Edit or delete them before posting.",
+        "______________________________",
+      ].join("\n");
+    } catch (err) {
+      console.error("Claim check failed:", err.message);
+      return "⚠ Claim check didn't run this time. Read every sentence about you or Skinstinct before posting.";
+    }
+  }
 
   // A news lookup failure should never block the draft.
   async function findNews(text) {
@@ -57,6 +79,7 @@ export function createBot(env = process.env) {
     console.log(newsUsed ? `News used: ${newsUsed.headline}` : "No news item used.");
 
     let message = `Rating: ${score}/10 - good to post.\n${reason}\n\n${draft}`;
+    message += `\n\n${await claimsBlock(text, draft)}`;
     if (newsUsed) {
       message += `\n\n${verifyFlag(newsUsed)}`;
     } else if (newsItems.length) {

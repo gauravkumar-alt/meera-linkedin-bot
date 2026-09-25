@@ -59,6 +59,61 @@ export class KeywordExtractor {
   }
 }
 
+const CLAIMS_PROMPT = `
+You check a LinkedIn draft written in Meera Pillai's name (founder of Skinstinct) for claims about herself or her company that she never supplied.
+
+List every factual claim in the post about Meera, Skinstinct, "I", "we", "our" or "us": things she did, saw, experienced, decided, tested, measured, sells or doesn't sell, practices the company follows, numbers about the business, and events, places, or dates in her life.
+
+For each sentence about her or the company, decide two things:
+
+kind:
+- "fact": asserts something that happened or is true about her or the company.
+- "opinion": a view, belief, interpretation, preference, hypothetical, or conditional ("I think...", "I would rather...", "I am not saying...", "If we did X, we would...", "That trade-off is deliberate").
+
+source (for facts):
+- "note": the note says it, even in different words. A paraphrase or restatement of the note is "note".
+- "known_facts": the known facts say it, even in different words.
+- "neither": it adds something that neither states - a new number, count, place, date, event, reason, practice, outcome, or detail - even if a related fact exists.
+  Watch for embellished paraphrases: a sentence that starts from something the note says but adds where, how, what exactly, or with what result is "neither", because the added part is new. Judge the whole sentence, not just its starting point.
+
+Skip general statements about the world, the industry, or science entirely.
+`.trim();
+
+const CLAIMS_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    claims: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          claim: { type: SchemaType.STRING, description: "The claim, quoted or closely paraphrased from the post" },
+          kind: { type: SchemaType.STRING, enum: ["fact", "opinion"] },
+          source: { type: SchemaType.STRING, enum: ["note", "known_facts", "neither"] },
+        },
+        required: ["claim", "kind", "source"],
+      },
+    },
+  },
+  required: ["claims"],
+};
+
+export class ClaimChecker {
+  constructor(apiKey, model, knownFacts) {
+    this.model = jsonModel(apiKey, model, CLAIMS_PROMPT, CLAIMS_SCHEMA);
+    this.knownFacts = knownFacts;
+  }
+
+  // Returns the claims about Meera/Skinstinct that are in neither the note nor the known facts.
+  async unsupported(rawNote, post) {
+    const result = await this.model.generateContent(
+      `KNOWN FACTS ABOUT MEERA AND SKINSTINCT:\n${this.knownFacts}\n\nMEERA'S NOTE:\n${rawNote}\n\nDRAFT POST:\n${post}`
+    );
+    const { claims } = JSON.parse(result.response.text());
+    return claims.filter((c) => c.kind === "fact" && c.source === "neither").map((c) => String(c.claim).trim());
+  }
+}
+
 const OUTPUT_CONTRACT = `
 You are drafting a LinkedIn post in Meera Pillai's voice, following the skill file above exactly.
 
