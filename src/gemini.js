@@ -33,9 +33,9 @@ export class NoteScorer {
 }
 
 const KEYWORDS_PROMPT = `
-You turn a note from a skincare founder in India into a Google News search.
-Pull 3-5 search terms from the note, then combine the most important ones into one short search phrase (2-5 words) that would find recent news on the note's subject.
-Use general subject terms (ingredients, regulations, claims, industry trends). Leave out anything internal to her company: batch numbers, "our", "we", the brand name Skinstinct, customer names.
+You turn a note from a skincare founder in India into a Google News search. The note may be about skincare or a topic around it: small business, hiring, manufacturing, money, Indian consumers, science and health claims, founder life.
+Pull 3-5 search terms from the note, then combine the most important ones into one short search phrase (2-5 words) that would find recent news on the note's own subject. Search the note's actual topic; don't add skincare terms to a note that is about something else.
+Use general subject terms that news articles would contain. Leave out anything internal to her company: batch numbers, "our", "we", the brand name Skinstinct, customer or supplier names, amounts from her own business.
 `.trim();
 
 const KEYWORDS_SCHEMA = {
@@ -71,8 +71,9 @@ Output format — respond with exactly two parts, separated by a line containing
 Follow the pre-send checklist in the skill file before you finish.
 
 Always produce a complete post. The note has already passed a quality screen, so never refuse and never ask for more information instead of drafting.
-- For a thin or off-topic note, choose the most natural angle that connects it to Meera's world: formulation science, label claims, documentation, ingredient mechanisms, or running a transparent skincare brand in India. A loose metaphor or analogy is fine as the opener if the word has no direct skincare link.
-- Build the post from general, well-established science and the persona canon facts in the skill file (her pharma background, the 2021 stability review, the humid-city returns data, the missing Vitamin C product, etc.). Those canon facts may be reused as the admission against interest.
+- The skill file describes HOW Meera writes, not the only thing she writes about. Skincare is her home ground; she also writes about topics around it: running a small business, hiring and teams, manufacturing and supply chains, money and pricing, Indian consumers, science and health claims, founder life. Write about the note's own subject. If the note is about one of those adjacent topics, keep the post on that topic; mention skincare or Skinstinct only as her context when it genuinely helps, never as a forced pivot.
+- Apply her moves to whatever the topic is: explain how or why something happens before giving the verdict, fence off what she is not saying, include an honest limitation, and close with something concrete the reader can check or do, or a flat closing line.
+- Build the post from the note and from general, well-established knowledge about the topic. Reuse persona canon facts from the skill file (her pharma background, the 2021 stability review, the humid-city returns data, the missing Vitamin C product, etc.) only when they genuinely fit the topic; never force them in.
 - Hard rule on first-person claims: anything stated about Meera, Skinstinct, "we" or "our" (products, batches, tests run, incidents, practices, numbers, timelines) must come either from the note or verbatim from the persona canon. Do not create new Skinstinct products, incidents, test results, or practices. If the post needs one, write an [INSERT: ...] placeholder describing what goes there instead.
 - When a canon number fits, use the real canon number (e.g. 23%, 71%, 8%, 67%) rather than a placeholder.
 - General science and industry-wide observations may be written freely, hedged the way the skill file describes.
@@ -89,6 +90,7 @@ ${list}
 
 If one of these news items is genuinely relevant, use it to make the post timely. If none fits naturally, ignore them.
 - Use at most one item. Refer to it only by what its headline says and attribute it to its publication. Do not invent details, quotes, or numbers from the article. No URLs in the post.
+- "Genuinely relevant" means the article is about the same subject as the post, not something loosely related used as a hook. If connecting it needs a stretch or an inference the headline does not state, ignore it.
 - A market-research report, product listicle, or advertorial is not news; treat it as not relevant.
 - After the Notes section, end your reply with one final line, exactly "NEWS_USED: <item number>" or "NEWS_USED: none".
 `.trim();

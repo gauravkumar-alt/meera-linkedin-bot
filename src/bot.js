@@ -30,8 +30,14 @@ export function createBot(env = process.env) {
   async function findNews(text) {
     try {
       const { keywords, phrase } = await extractor.extract(text);
-      const items = await searchNews(phrase);
-      console.log(`News search "${phrase}" (keywords: ${keywords.join(", ")}): ${items.length} results`);
+      let items = await searchNews(phrase);
+      console.log(`News search "${phrase}": ${items.length} results`);
+      if (!items.length && keywords.length) {
+        // Google News requires every word to match, so a specific phrase often returns nothing.
+        const broader = keywords.slice(0, 3).map((k) => `"${k}"`).join(" OR ");
+        items = await searchNews(broader);
+        console.log(`Broader news search ${broader}: ${items.length} results`);
+      }
       return items;
     } catch (err) {
       console.error("News lookup failed, drafting without news:", err.message);
