@@ -14,6 +14,14 @@ for each new channel post; it drafts and replies before returning 200.
 `src/index.js` is a local long-polling runner for debugging only. It won't receive
 anything while the webhook is set, so delete the webhook first if you need it.
 
+## Note scoring
+
+Before drafting, Gemini scores each note 0-10 against `skill/note-scoring.md`
+(is it a post idea, is there a point, does it fit her pillars, is there real
+material, is it on-brand). Below 6, the bot replies with the score and reason and
+stops; 6 or above, it drafts and appends the score. Edit that file to change what
+counts as postworthy; the threshold is `MIN_SCORE` in `src/bot.js`.
+
 ## Environment variables
 
 Set these in Vercel (Project → Settings → Environment Variables), and in `.env` for

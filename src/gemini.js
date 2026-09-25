@@ -1,4 +1,34 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+
+const SCORE_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    score: { type: SchemaType.INTEGER, description: "0-10" },
+    reason: { type: SchemaType.STRING, description: "One line, addressed to Meera" },
+  },
+  required: ["score", "reason"],
+};
+
+export class NoteScorer {
+  constructor(apiKey, model, rubricText) {
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+    this.model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
+      model: model || "gemini-flash-lite-latest",
+      systemInstruction: rubricText,
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
+        responseSchema: SCORE_SCHEMA,
+      },
+    });
+  }
+
+  async score(rawNote) {
+    const result = await this.model.generateContent(`Meera's raw note:\n\n${rawNote}`);
+    const { score, reason } = JSON.parse(result.response.text());
+    return { score: Math.max(0, Math.min(10, Math.round(Number(score)))), reason: String(reason).trim() };
+  }
+}
 
 const OUTPUT_CONTRACT = `
 You are drafting a LinkedIn post in Meera Pillai's voice, following the skill file above exactly.
@@ -7,11 +37,11 @@ Input: a raw, possibly messy note from Meera describing what she wants to write 
 
 Output format — respond with exactly two parts, separated by a line containing only "---":
 1. The finished LinkedIn post itself. Plain text only, ready to paste into LinkedIn. No markdown, no headers, no quotation marks wrapping it, no commentary before or after it.
-2. After the "---" line, a short "Notes for Meera" section (a few lines max): call out any bracketed placeholders you inserted because the note was missing a number, limitation, or detail, and name what would strengthen the piece. If nothing is missing, write "Notes for Meera: nothing missing — ready to review."
+2. After the "---" line, a short "Notes for Meera" section (a few lines max), in the format described below.
 
 Follow the pre-send checklist in the skill file before you finish.
 
-Always produce a complete post. Never refuse, never ask for more information instead of drafting, however short or vague the note is (even a single word like "dinosaur" or a question like "why protein is important").
+Always produce a complete post. The note has already passed a quality screen, so never refuse and never ask for more information instead of drafting.
 - For a thin or off-topic note, choose the most natural angle that connects it to Meera's world: formulation science, label claims, documentation, ingredient mechanisms, or running a transparent skincare brand in India. A loose metaphor or analogy is fine as the opener if the word has no direct skincare link.
 - Build the post from general, well-established science and the persona canon facts in the skill file (her pharma background, the 2021 stability review, the humid-city returns data, the missing Vitamin C product, etc.). Those canon facts may be reused as the admission against interest.
 - Hard rule on first-person claims: anything stated about Meera, Skinstinct, "we" or "our" (products, batches, tests run, incidents, practices, numbers, timelines) must come either from the note or verbatim from the persona canon. Do not create new Skinstinct products, incidents, test results, or practices. If the post needs one, write an [INSERT: ...] placeholder describing what goes there instead.
