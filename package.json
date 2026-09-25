@@ -1,0 +1,17 @@
+{
+  "name": "meera-linkedin-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Telegram bot: Meera sends a raw note, Gemini drafts a LinkedIn post in her voice, draft comes back on Telegram for review.",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
