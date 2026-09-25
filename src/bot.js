@@ -78,14 +78,18 @@ export function createBot(env = process.env) {
     const { text: draft, newsUsed } = await drafter.draft(text, newsItems);
     console.log(newsUsed ? `News used: ${newsUsed.headline}` : "No news item used.");
 
-    let message = `Rating: ${score}/10 - good to post.\n${reason}\n\n${draft}`;
-    message += `\n\n${await claimsBlock(text, draft)}`;
-    if (newsUsed) {
-      message += `\n\n${verifyFlag(newsUsed)}`;
-    } else if (newsItems.length) {
-      message += `\n\nNews checked (${newsItems.length} recent articles) - none fit naturally, so the post doesn't use one.`;
-    }
-    return message;
+    const news = newsUsed
+      ? verifyFlag(newsUsed)
+      : newsItems.length
+        ? `News checked (${newsItems.length} recent articles) - none fit naturally, so the post doesn't use one.`
+        : "News checked - no recent articles found on this topic.";
+
+    return [
+      `Rating: ${score}/10 - good to post.\n${reason}`,
+      news,
+      draft,
+      await claimsBlock(text, draft),
+    ].join("\n\n");
   }
 
   async function handleUpdate(update) {
