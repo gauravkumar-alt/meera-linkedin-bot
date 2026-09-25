@@ -19,7 +19,7 @@ anything while the webhook is set, so delete the webhook first if you need it.
 Before drafting, Gemini scores each note 0-10 against `skill/note-scoring.md`
 (is it a post idea, is there a point, does it fit her pillars, is there real
 material, is it on-brand). Below 6, the bot replies with the score and reason and
-stops; 6 or above, it drafts and appends the score. Edit that file to change what
+stops; 6 or above, it drafts. The rating is always the first line of the reply. Edit that file to change what
 counts as postworthy; the threshold is `MIN_SCORE` in `src/bot.js`.
 
 ## Environment variables

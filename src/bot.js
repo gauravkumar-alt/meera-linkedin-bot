@@ -28,10 +28,10 @@ export function createBot(env = process.env) {
     const { score, reason } = await scorer.score(text);
     console.log(`Score ${score}/10: ${reason}`);
     if (score < MIN_SCORE) {
-      return `No draft for this note (score ${score}/10): ${reason}`;
+      return `Rating: ${score}/10 - not for LinkedIn. No draft made.\n${reason}`;
     }
     const draft = await drafter.draft(text);
-    return `${draft}\n\nScore: ${score}/10 - ${reason}`;
+    return `Rating: ${score}/10 - good to post.\n${reason}\n\n${draft}`;
   }
 
   async function handleUpdate(update) {
