@@ -22,6 +22,20 @@ material, is it on-brand). Below 6, the bot replies with the score and reason an
 stops; 6 or above, it drafts. The rating is always the first line of the reply. Edit that file to change what
 counts as postworthy; the threshold is `MIN_SCORE` in `src/bot.js`.
 
+## News angle
+
+For notes that pass scoring, Gemini pulls 3-5 keywords into a short search phrase,
+and `src/news.js` searches Google News' public RSS feed (India edition, last 30
+days, no key needed). The top 5 results go to the drafter, which uses one only if it
+genuinely fits. Any draft that cites an article gets a verify block (headline,
+publication, date, link) built by the code from the feed, not written by the model.
+If the post mentions an article's headline or publication, the block is added even
+if the model said it used none. If the news lookup fails, the draft goes ahead
+without news.
+
+The feed only carries headline, publication, date and link, not article text, so
+the drafter is told not to state anything beyond the headline.
+
 ## Environment variables
 
 Set these in Vercel (Project → Settings → Environment Variables), and in `.env` for

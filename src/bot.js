@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TelegramClient } from "./telegram.js";
-import { PostDrafter, NoteScorer } from "./gemini.js";
+import { PostDrafter, NoteScorer, KeywordExtractor } from "./gemini.js";
+import { searchNews } from "./news.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILL_FILE = join(__dirname, "..", "skill", "meera-voice.md");
@@ -23,6 +24,20 @@ export function createBot(env = process.env) {
   const telegram = new TelegramClient(TELEGRAM_BOT_TOKEN);
   const drafter = new PostDrafter(GEMINI_API_KEY, GEMINI_MODEL, readFileSync(SKILL_FILE, "utf8"));
   const scorer = new NoteScorer(GEMINI_API_KEY, GEMINI_MODEL, readFileSync(RUBRIC_FILE, "utf8"));
+  const extractor = new KeywordExtractor(GEMINI_API_KEY, GEMINI_MODEL);
+
+  // A news lookup failure should never block the draft.
+  async function findNews(text) {
+    try {
+      const { keywords, phrase } = await extractor.extract(text);
+      const items = await searchNews(phrase);
+      console.log(`News search "${phrase}" (keywords: ${keywords.join(", ")}): ${items.length} results`);
+      return items;
+    } catch (err) {
+      console.error("News lookup failed, drafting without news:", err.message);
+      return [];
+    }
+  }
 
   async function reply(text) {
     const { score, reason } = await scorer.score(text);
@@ -30,8 +45,18 @@ export function createBot(env = process.env) {
     if (score < MIN_SCORE) {
       return `Rating: ${score}/10 - not for LinkedIn. No draft made.\n${reason}`;
     }
-    const draft = await drafter.draft(text);
-    return `Rating: ${score}/10 - good to post.\n${reason}\n\n${draft}`;
+
+    const newsItems = await findNews(text);
+    const { text: draft, newsUsed } = await drafter.draft(text, newsItems);
+    console.log(newsUsed ? `News used: ${newsUsed.headline}` : "No news item used.");
+
+    let message = `Rating: ${score}/10 - good to post.\n${reason}\n\n${draft}`;
+    if (newsUsed) {
+      message += `\n\n${verifyFlag(newsUsed)}`;
+    } else if (newsItems.length) {
+      message += `\n\nNews checked (${newsItems.length} recent articles) - none fit naturally, so the post doesn't use one.`;
+    }
+    return message;
   }
 
   async function handleUpdate(update) {
@@ -66,6 +91,18 @@ export function createBot(env = process.env) {
   }
 
   return { telegram, handleUpdate };
+}
+
+function verifyFlag(item) {
+  const rule = "______________________________";
+  return [
+    rule,
+    `NEWS SOURCE: ${item.headline}`,
+    `FROM: ${item.source} · ${item.date}`,
+    `LINK: ${item.link}`,
+    "⚠ Check this before publishing - you are the author of this claim",
+    rule,
+  ].join("\n");
 }
 
 function friendlyError(err) {
